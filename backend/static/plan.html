@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="원주 영유아 맞벌이 부모를 위한 육아 혜택 계산기. 받을 수 있는 제도, 복직 시점별 예상 금액, 신청 순서와 마감을 한 화면에서 확인합니다.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>원주 육아 혜택 비서 (가칭)</title>
+  <link rel="stylesheet" href="css/plan.css">
+</head>
+<body>
+  <a class="skip" href="#app">본문으로 건너뛰기</a>
+
+  <!-- 레퍼런스(RE:BORN) 좌우 하단 배경의 은은한 3D 직육면체 기둥 구조물 -->
+  <div class="bg-pillars" aria-hidden="true">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice" class="bg-pillars-svg">
+      <g class="pillar-group">
+        <polygon points="-40,510 110,450 260,510 110,570" class="pillar-top"></polygon>
+        <polygon points="-40,510 110,570 110,920 -40,860" class="pillar-left"></polygon>
+        <polygon points="260,510 110,570 110,920 260,860" class="pillar-right"></polygon>
+      </g>
+      <g class="pillar-group">
+        <polygon points="150,620 280,568 410,620 280,672" class="pillar-top-soft"></polygon>
+        <polygon points="150,620 280,672 280,920 150,868" class="pillar-left-soft"></polygon>
+        <polygon points="410,620 280,672 280,920 410,868" class="pillar-right-soft"></polygon>
+      </g>
+      <g class="pillar-group">
+        <polygon points="1050,600 1190,544 1330,600 1190,656" class="pillar-top-soft"></polygon>
+        <polygon points="1050,600 1190,656 1190,920 1050,864" class="pillar-left-soft"></polygon>
+        <polygon points="1330,600 1190,656 1190,920 1330,864" class="pillar-right-soft"></polygon>
+      </g>
+      <g class="pillar-group">
+        <polygon points="1220,420 1380,356 1540,420 1380,484" class="pillar-top"></polygon>
+        <polygon points="1220,420 1380,484 1380,920 1220,856" class="pillar-left"></polygon>
+        <polygon points="1540,420 1380,484 1380,920 1540,856" class="pillar-right"></polygon>
+      </g>
+      <g class="wire-cube">
+        <polygon points="555,515 580,503 605,515 580,527" class="wire-stroke"></polygon>
+        <polygon points="555,515 580,527 580,555 555,543" class="wire-stroke"></polygon>
+        <polygon points="605,515 580,527 580,555 605,543" class="wire-stroke"></polygon>
+      </g>
+      <g class="wire-cube">
+        <polygon points="895,560 916,550 937,560 916,570" class="wire-stroke"></polygon>
+        <polygon points="895,560 916,570 916,594 895,584" class="wire-stroke"></polygon>
+        <polygon points="937,560 916,570 916,594 937,584" class="wire-stroke"></polygon>
+      </g>
+    </svg>
+  </div>
+
+  <header class="top">
+    <div class="top-shell">
+      <div class="top-inner">
+        <div class="brand-wrap">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 40 36" class="brand-svg" focusable="false">
+              <circle cx="12" cy="10" r="4.2" class="logo-fg"></circle>
+              <path d="M5.5 22c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2" class="logo-arc"></path>
+              <circle cx="28" cy="10" r="4.2" class="logo-fg"></circle>
+              <path d="M21.5 22c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2" class="logo-arc"></path>
+              <circle cx="20" cy="14.5" r="3.6" class="logo-sub"></circle>
+              <path d="M14.2 25.5c0-3.1 2.6-5.4 5.8-5.4s5.8 2.3 5.8 5.4" class="logo-arc-sub"></path>
+            </svg>
+          </span>
+          <div class="brand-text">
+            <strong class="brand">원주 육아 혜택 비서</strong>
+            <span class="top-sub">맞벌이 부모를 위한 혜택 계산</span>
+          </div>
+        </div>
+
+        <nav class="top-nav" id="top-nav-intro" aria-label="시작 화면 안내 메뉴">
+          <a class="nav-link" href="#intro-top" id="nav-intro-link">서비스 소개</a>
+          <a class="nav-link" href="#onboard" id="nav-diag-link">맞춤형 진단</a>
+        </nav>
+
+
+        <div class="top-actions">
+          <button type="button" class="btn-top-cta" id="top-start-btn">비서 시작하기</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+
+  <div id="app" class="app-container">
+    <!-- 항상 맨 위에 고정되어 있는 서비스 소개(Hero Showcase) 섹션 -->
+    <section id="intro-top" class="intro-top-section" aria-labelledby="intro-heading"></section>
+
+    <!-- 진단 시작 시 아래쪽에 펼쳐지며 빠르게 스크롤 이동하는 온보딩 섹션 -->
+    <main id="onboard" class="onboard" hidden tabindex="-1">
+      <div class="onboard-anchor-head">
+        <span class="section-kicker">맞춤형 혜택 진단</span>
+        <h2 class="onboard-section-title">우리 가족 조건 입력</h2>
+      </div>
+      <div class="progress" id="progress" hidden>
+        <div class="progress-meta">
+          <button type="button" class="link-btn prev-btn" id="prev">← 이전 질문</button>
+          <span class="progress-count" id="progress-text" aria-live="polite"></span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+      <section class="step" id="step" aria-live="polite"></section>
+    </main>
+
+    <main id="results" class="results" hidden tabindex="-1" aria-labelledby="summary-title">
+      <div class="r-layout">
+        <aside class="r-side" aria-label="결과 화면 메뉴">
+          <nav class="r-nav" aria-label="결과 섹션 바로가기">
+            <a class="r-nav-link" href="#sec-overview" data-sec="sec-overview"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg><span>한눈에 보기</span></a>
+            <a class="r-nav-link" href="#sec-sim" data-sec="sec-sim"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5h16"/><path d="M5 15l4.5-5 3.5 3 6-7"/></svg><span>복직 시뮬레이션</span></a>
+            <a class="r-nav-link" href="#sec-events" data-sec="sec-events"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>일정</span></a>
+            <button type="button" class="r-nav-link r-nav-ai" id="nav-ai"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg><span>AI 비서</span></button>
+          </nav>
+          <div class="side-chat">
+            <p class="side-chat-title">AI 비서에게 물어보기</p>
+            <form class="side-chat-form" id="side-chat-form">
+              <label for="side-chat-input" class="sr-only">AI 비서에게 질문하기</label>
+              <input id="side-chat-input" type="text" autocomplete="off" placeholder="궁금한 점을 적어 보세요">
+              <button type="submit" class="side-chat-send" aria-label="AI 비서에게 보내기"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5.5"/><path d="M6.5 11L12 5.5 17.5 11"/></svg></button>
+            </form>
+            <div class="side-chips" id="side-chips"></div>
+          </div>
+        </aside>
+
+        <div class="r-main">
+          <header class="r-summary">
+            <div>
+              <h1 id="summary-title" class="r-title">우리 집 기준 결과</h1>
+              <p class="r-summary-text" id="summary-text"></p>
+            </div>
+            <button type="button" class="btn-ghost" id="edit">답 바꾸기</button>
+          </header>
+
+          <p class="demo-note" id="demo-note" role="status" hidden>예시 가구 기준 결과예요. 위의 '답 바꾸기'에서 우리 가족 조건으로 바꿔 보세요.</p>
+
+          <!-- A. 한눈에 보기 -->
+          <section class="r-sec" id="sec-overview" aria-labelledby="ov-title">
+            <div class="r-head">
+              <h2 id="ov-title">한눈에 보기</h2>
+              <p class="r-lead">이번 달 받는 금액과 제도별 내역입니다.</p>
+            </div>
+            <div class="ov-card" id="ov-card"></div>
+          </section>
+
+          <!-- B. 복직 시뮬레이션 -->
+          <section class="r-sec r-sec-feature" id="sec-sim" aria-labelledby="sim-title">
+            <div class="r-head">
+              <h2 id="sim-title">복직 시뮬레이션</h2>
+              <p class="r-lead">복직 시점을 옮기면 아이 35개월까지 받는 지원금이 어떻게 달라지는지 보여 드립니다.</p>
+            </div>
+            <p id="sim-off" class="r-note" hidden></p>
+
+            <div id="sim-on">
+              <div class="top3" id="top3" aria-labelledby="top3-title">
+                <div class="top3-head">
+                  <h3 id="top3-title">복직 시점 추천 Top 3</h3>
+                  <p class="top3-lead">세 가지 기준으로 고른 복직 시점이에요. 금액은 아이 35개월까지 받는 지원금(현금) 합계이고, 복직 후 월급은 넣지 않았어요.</p>
+                </div>
+                <ol class="top3-list" id="top3-list"></ol>
+              </div>
+              <div class="sim-controls">
+                <div class="ctl ctl-pick">
+                  <label for="returnPick">복직 예정 시점</label>
+                  <select id="returnPick" class="select-control"></select>
+                </div>
+                <div class="ctl ctl-slider">
+                  <div class="ctl-row">
+                    <label for="returnAge">슬라이더로 옮기기</label>
+                    <output id="returnAge-out" for="returnAge"></output>
+                  </div>
+                  <input id="returnAge" type="range" min="0" max="35" step="1" value="12">
+                  <div class="ctl-bounds" aria-hidden="true">
+                    <span id="slider-min-label"></span>
+                    <span id="slider-max-label"></span>
+                  </div>
+                </div>
+                <div class="ctl ctl-total">
+                  <p class="ctl-label">아이 35개월까지 현금</p>
+                  <p class="ctl-big" id="sim-total" aria-live="polite"></p>
+                  <p class="ctl-diff" id="sim-diff" aria-live="polite"></p>
+                </div>
+              </div>
+
+              <div class="chart-card">
+                <div class="tabs" role="tablist" aria-label="그래프 보기">
+                  <button type="button" role="tab" class="tab" id="tab-curve" aria-controls="panel-curve" aria-selected="true">복직 시점별 합계</button>
+                  <button type="button" role="tab" class="tab" id="tab-bars" aria-controls="panel-bars" aria-selected="false" tabindex="-1">개월별 금액</button>
+                  <button type="button" role="tab" class="tab" id="tab-table" aria-controls="panel-table" aria-selected="false" tabindex="-1">표</button>
+                </div>
+                <div class="tab-panel" role="tabpanel" id="panel-curve" aria-labelledby="tab-curve" tabindex="0">
+                  <p class="chart-cap" id="curve-cap"></p>
+                  <div class="curve" id="curve"></div>
+                </div>
+                <div class="tab-panel" role="tabpanel" id="panel-bars" aria-labelledby="tab-bars" tabindex="0" hidden>
+                  <p class="chart-cap">아이 개월별로 받는 금액입니다. 점선이 복직 시점입니다.</p>
+                  <div class="chart-frame">
+                    <div class="bars" id="bars" role="img"></div>
+                    <div class="bars-axis" id="bars-axis" aria-hidden="true"></div>
+                  </div>
+                </div>
+                <div class="tab-panel" role="tabpanel" id="panel-table" aria-labelledby="tab-table" tabindex="0" hidden>
+                  <div class="table-scroll" id="month-table"></div>
+                </div>
+              </div>
+
+              <div class="scenarios" id="scenarios">
+                <article class="scn scn-a">
+                  <div class="scn-head">
+                    <span class="scn-key">A</span>
+                    <label for="baseAge" class="scn-label">비교 기준</label>
+                  </div>
+                  <select id="baseAge" class="select-control"></select>
+                  <dl class="scn-dl" id="scn-a"></dl>
+                </article>
+                <div class="scn-gap" id="scn-gap" aria-live="polite"></div>
+                <article class="scn scn-b">
+                  <div class="scn-head">
+                    <span class="scn-key">B</span>
+                    <span class="scn-label">지금 고른 시점</span>
+                  </div>
+                  <p class="scn-pick" id="scn-b-pick"></p>
+                  <dl class="scn-dl" id="scn-b"></dl>
+                </article>
+              </div>
+
+              <details class="assume" id="assume" open>
+                <summary>
+                  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg>
+                  <span>계산 기준과 가정</span>
+                </summary>
+                <div class="assume-body">
+                  <p id="leave-basis"></p>
+                  <p id="sim-note"></p>
+                </div>
+              </details>
+            </div>
+
+          <div class="mb-card" id="mb-card" aria-labelledby="mb-title">
+            <div class="mb-head">
+              <div>
+                <h3 id="mb-title">월별 지급 내역</h3>
+                <p class="mb-lead">고른 달에 어떤 지원금을 얼마씩 받는지 보여 드려요. 복직 계획이 있으면 고른 복직 시점이 반영됩니다.</p>
+              </div>
+              <div class="mb-pick">
+                <button type="button" class="mb-step" id="mb-prev" aria-label="이전 달 보기"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+                <label for="mb-month" class="sr-only">볼 달 고르기</label>
+                <select id="mb-month" class="select-control"></select>
+                <button type="button" class="mb-step" id="mb-next" aria-label="다음 달 보기"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
+              </div>
+            </div>
+            <div id="mb-body" aria-live="polite"></div>
+          </div>
+          </section>
+
+          <!-- E. 일정 -->
+          <section class="r-sec" id="sec-events" aria-labelledby="events-title">
+            <div class="r-head r-head-row">
+              <div>
+                <h2 id="events-title">일정</h2>
+                <p class="r-lead">신청 마감, 금액이 바뀌는 달, 복직 시점을 달마다 모았습니다. 날짜는 아이 개월 수로 계산한 대략의 달입니다.</p>
+              </div>
+              <button type="button" class="btn-ghost" id="ics">달력 앱에 넣기 (.ics)</button>
+            </div>
+            <p class="cal-alert" id="cal-alert" role="status" hidden></p>
+            <p class="help" id="ics-help">내려받은 파일을 열면 휴대폰이나 PC 달력에 들어갑니다. 마감 일정은 일주일 전에 알림이 울립니다.</p>
+            <div class="seg" role="group" aria-label="일정 보기 방식">
+              <button type="button" class="seg-btn" id="cal-view-grid" aria-pressed="true">달력</button>
+              <button type="button" class="seg-btn" id="cal-view-list" aria-pressed="false">목록</button>
+            </div>
+            <div class="cal" id="cal">
+              <div class="cal-months" id="cal-months"></div>
+              <div class="cal-detail" id="cal-detail" aria-live="polite"></div>
+            </div>
+            <ol class="timeline" id="events" hidden></ol>
+          </section>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="foot" id="app-foot">
+    <div class="foot-inner">
+      <p>이 서비스는 시범 버전입니다. 제도 정보는 공식 자료로 확인했지만 일부 항목은 확인 중이며, 판정과 금액은 규칙으로 계산한 예상치이며 실제 지급액과 다를 수 있습니다.</p>
+      <p>실제 지원 대상, 신청 가능 여부, 금액은 정책 요건과 예산에 따라 달라질 수 있으므로 관계 기관에서 확인해 주세요.</p>
+      <p>입력한 내용과 신청 표시는 이 화면에만 있으며 저장하지 않습니다. AI 비서가 규칙으로 답하지 못한 질문(조건 요약 포함)과, 공고문 AI 분석에 올린 공고문·주소만 서버 AI로 보내며 서버에 저장하지 않습니다.</p>
+    </div>
+  </footer>
+
+
+  <!-- AI 비서: 큰 글래스 팝업 -->
+  <div class="chat-layer" id="chat-layer" hidden>
+    <div class="chat-scrim" id="chat-scrim"></div>
+    <section class="chat-dialog" id="chat-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-title">
+      <span class="chat-orb chat-orb-a" aria-hidden="true"></span>
+      <span class="chat-orb chat-orb-b" aria-hidden="true"></span>
+      <header class="chat-bar">
+        <div class="chat-brand"><span class="chat-dot" aria-hidden="true"></span><h2 id="chat-title">원주 육아 혜택 AI 비서</h2></div>
+        <div class="chat-conds" id="chat-conds"></div>
+        <button type="button" class="chat-close" id="chat-close" aria-label="AI 비서 닫기"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+      </header>
+      <p class="chat-live" id="chat-live"></p>
+      <div class="chat-log" id="chat-log" aria-live="polite" tabindex="-1"></div>
+      <div class="chat-foot">
+        <div class="chat-chips" id="chat-chips"></div>
+        <form class="chat-form" id="chat-form">
+          <span class="chat-spark"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></span>
+          <label for="chat-input" class="sr-only">AI 비서에게 질문하기</label>
+          <input id="chat-input" type="text" autocomplete="off" placeholder="예: 이달 신청할 제도 보여줘, 공고문 분석해줘, 공고 주소 붙여넣기">
+          <button type="submit" class="chat-send" aria-label="보내기"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5.5"/><path d="M6.5 11L12 5.5 17.5 11"/></svg></button>
+        </form>
+        <p class="chat-note">주민번호와 계좌번호는 입력해도 자동으로 가려요. 답에 나오는 금액과 판정은 규칙 엔진이 계산한 값이에요. 규칙으로 답하지 못한 질문과 공고문 분석만 서버 AI로 보내요.</p>
+      </div>
+    </section>
+  </div>
+  <button type="button" class="chat-pill" id="chat-pill" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg><span>AI 비서 다시 열기</span></button>
+  <div class="chat-toast" id="chat-toast" role="status" aria-live="polite"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/catalog-verified.js"></script>
+  <script src="js/plan.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/plan-ui.js"></script>
+</body>
+</html>
