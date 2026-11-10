@@ -3128,3 +3128,6 @@ html.chat-open, html.chat-open body { overflow: hidden; }
 @media (max-width: 1099px) {
   .r-side { top: var(--top-h, 84px); }
 }
+
+/* 공고문 AI 분석·개인정보 가리기가 실패했을 때 안내 (진행 중 안내는 기존 연한 글씨 그대로) */
+.msg-note.is-error { color: var(--danger-text, #B93A3A); font-weight: 700; }

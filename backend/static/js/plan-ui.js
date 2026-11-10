@@ -2358,7 +2358,7 @@
     function show(text, kind) {
       status.hidden = !text;
       status.textContent = text || "";
-      status.className = "msg-note"; // 진행·오류 모두 기존 안내 글 모양 (문장으로 구분)
+      status.className = "msg-note" + (kind === "error" ? " is-error" : ""); // 오류만 진하게, 진행 안내는 기존 모양
     }
     function run(request, label) {
       if (busy) return;
