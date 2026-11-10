@@ -93,9 +93,27 @@
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* 빠르고 부드러운 커스텀 스크롤 이동 (약 320ms) — 온보딩은 화면에 온보딩 카드만 단독으로 보이도록 스크롤 */
+  /* 좁은 화면(1100px 미만)에서는 상단 바가 두 줄이 되고 섹션 메뉴도 위에 붙어 있으므로, 실제 높이만큼 띄움 (PC는 그대로 76px) */
+  function syncTopHeight() {
+    const top = document.querySelector(".top");
+    if (top) document.documentElement.style.setProperty("--top-h", Math.ceil(top.getBoundingClientRect().height) + "px");
+  }
+  syncTopHeight();
+  window.addEventListener("resize", syncTopHeight);
+
+  function stickyOffset() {
+    if (window.innerWidth >= 1100) return 76;
+    const top = document.querySelector(".top");
+    const side = document.querySelector(".r-side");
+    const res = document.getElementById("results");
+    let h = top ? top.getBoundingClientRect().height : 76;
+    if (side && res && !res.hidden) h += side.getBoundingClientRect().height;
+    return Math.ceil(h) + 8;
+  }
+
   function quickScrollTo(targetEl, exactTop) {
     if (!targetEl) return;
-    const headerOffset = exactTop ? 0 : 76;
+    const headerOffset = exactTop ? 0 : stickyOffset();
     const targetY = Math.max(0, targetEl.getBoundingClientRect().top + window.pageYOffset - headerOffset);
     if (reduceMotion) {
       window.scrollTo(0, targetY);
@@ -2334,6 +2352,7 @@
     const urlIn = el("input", { type: "url", inputmode: "url", placeholder: "https://www.wonju.go.kr/...", "aria-label": "공고 페이지 주소", value: preUrl || null });
     const fileBtn = el("button", { type: "button", class: "msg-act", text: "파일 분석" });
     const urlBtn = el("button", { type: "button", class: "msg-act", text: "주소로 분석" });
+    const maskBtn = el("button", { type: "button", class: "msg-act", text: "개인정보 가린 PDF 받기" });
     let busy = false;
 
     function show(text, kind) {
@@ -2344,7 +2363,7 @@
     function run(request, label) {
       if (busy) return;
       busy = true;
-      fileBtn.disabled = urlBtn.disabled = true;
+      fileBtn.disabled = urlBtn.disabled = maskBtn.disabled = true;
       show("AI가 공고문을 읽고 있어요. 길면 1분 정도 걸릴 수 있어요…", "loading");
       request().then(function (data) {
         show("", null);
@@ -2355,7 +2374,7 @@
         show(e.message, "error");
       }).then(function () {
         busy = false;
-        fileBtn.disabled = urlBtn.disabled = false;
+        fileBtn.disabled = urlBtn.disabled = maskBtn.disabled = false;
       });
     }
     function goUrl() {
@@ -2379,6 +2398,49 @@
       body.append("file", f, f.name);
       run(function () { return callAiApi("/api/analyze", { method: "POST", body: body }); }, "올린 파일 · " + f.name);
     });
+    /* 개인정보 가린 PDF 받기: 주민번호·전화번호·계좌번호를 검은 칸으로 가린 PDF를 돌려받아 내려받음 (AI에 보내지 않음) */
+    maskBtn.addEventListener("click", function () {
+      const f = fileIn.files && fileIn.files[0];
+      if (!f) { show("개인정보를 가릴 PDF 파일을 먼저 골라 주세요.", "error"); fileIn.focus(); return; }
+      if (!/\.pdf$/i.test(f.name)) { show("개인정보 가리기는 PDF 파일만 할 수 있어요.", "error"); return; }
+      if (f.size > DOC_MAX) { show("파일 용량이 너무 커요. 15MB 이하 파일만 올릴 수 있어요.", "error"); return; }
+      if (busy) return;
+      busy = true;
+      fileBtn.disabled = urlBtn.disabled = maskBtn.disabled = true;
+      show("PDF에서 개인정보를 찾아 가리고 있어요…", "loading");
+      const body = new FormData();
+      body.append("file", f, f.name);
+      const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, DOC_TIMEOUT);
+      fetch("/api/mask", { method: "POST", body: body, signal: ctrl ? ctrl.signal : undefined }).then(function (res) {
+        const type = res.headers.get("Content-Type") || "";
+        if (res.ok && type.indexOf("application/pdf") >= 0) {
+          const n = Number(res.headers.get("X-Masked-Count")) || 0;
+          return res.blob().then(function (blob) {
+            const url = URL.createObjectURL(blob);
+            const a = el("a", { href: url, download: f.name.replace(/\.pdf$/i, "") + "_개인정보가림.pdf" });
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+            show(n
+              ? "개인정보 " + n + "곳을 가린 PDF를 내려받았어요. 열어서 빠진 곳이 없는지 꼭 확인하세요."
+              : "가릴 개인정보를 찾지 못해 원본과 같은 PDF를 내려받았어요. 직접 확인해 주세요.", null);
+          });
+        }
+        return res.json().catch(function () { return null; }).then(function (data) {
+          throw new Error(data && data.user_message ? data.user_message : "개인정보를 가리지 못했어요. (HTTP " + res.status + ")");
+        });
+      }).catch(function (e) {
+        show(e && e.name === "AbortError" ? "처리가 너무 오래 걸려 멈췄어요. 잠시 후 다시 시도해 주세요."
+          : e instanceof TypeError ? "서버에 연결하지 못했어요. 서버가 켜져 있는지 확인해 주세요."
+          : e.message, "error");
+      }).then(function () {
+        clearTimeout(timer);
+        busy = false;
+        fileBtn.disabled = urlBtn.disabled = maskBtn.disabled = false;
+      });
+    });
     urlBtn.addEventListener("click", goUrl);
     urlIn.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); goUrl(); } });
 
@@ -2388,6 +2450,8 @@
       el("div", { class: "chat-form" }, [fileIn, fileBtn]),
       el("div", { class: "chat-form" }, [urlIn, urlBtn])
     ]));
+    box.appendChild(el("div", { class: "msg-acts" }, [maskBtn]));
+    box.appendChild(el("p", { class: "muted", text: "신청서처럼 개인정보가 들어 있는 PDF는 분석 대신 '개인정보 가린 PDF 받기'를 누르세요. 주민번호·전화번호·계좌번호를 검은 칸으로 가린 PDF를 내려받아요. AI에 보내지 않고 서버에서 바로 처리하며 저장하지 않아요." }));
     box.appendChild(status);
     box.appendChild(result);
     if (preUrl) goUrl();

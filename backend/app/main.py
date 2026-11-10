@@ -87,7 +87,7 @@ MAX_FILE_SIZE = 15 * 1024 * 1024  # 15MB 제한
 
 # Bedrock을 부르는 요청은 동시에 이 개수까지만 처리 (몰려도 서버·비용이 폭주하지 않게, 나머지는 잠시 대기)
 AI_SLOTS = asyncio.Semaphore(int(os.environ.get("AI_MAX_CONCURRENCY", "4")))
-DEFAULT_SUGGESTION = "화면 상단의 '원주시 대표 복지 공고문 샘플' 버튼을 눌러 바로 체험해 보실 수 있어요!"
+DEFAULT_SUGGESTION = "잠시 후 다시 시도하거나, 다른 공고문 파일(PDF·HWP)이나 공고 페이지 주소로 시도해 보세요."
 
 # 모의 신청 상태 저장소 (개인정보는 저장하지 않고 접수번호·혜택ID·시각만 보관)
 # ※ 메모리 저장이므로 서버 재시작 시 초기화되고, 워커를 여러 개 띄우면 공유되지 않습니다(시연용 단일 워커 권장).

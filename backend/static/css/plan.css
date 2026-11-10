@@ -3123,3 +3123,8 @@ html.chat-open, html.chat-open body { overflow: hidden; }
 .top3-card.is-selected .top3-diff { background: #E7F7EF; color: #0E7A4F; border-color: #B7E4CE; }
 .top3-flat { grid-column: 1 / -1; }
 @media (max-width: 860px) { .top3-list { grid-template-columns: minmax(0, 1fr); } }
+
+/* 좁은 화면: 상단 바가 두 줄이 되어도 결과 화면의 섹션 메뉴가 가려지지 않게 (높이는 plan-ui.js가 --top-h로 알려 줌) */
+@media (max-width: 1099px) {
+  .r-side { top: var(--top-h, 84px); }
+}
