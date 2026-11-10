@@ -278,20 +278,43 @@
     },
     singleChild: {
       title: "자녀가 한 명인가요?",
-      help: "자녀가 여러 명이면 제도마다 어느 아이 기준인지 확인이 필요합니다.",
+      help: "지원금은 아이마다 따로 받아요. 여러 명이면 가장 어린 아이 한 명 기준으로 계산해 드립니다.",
       options: [
         { label: "네, 한 명이에요", value: "yes" },
-        { label: "아니요, 여러 명이에요", sub: "금액은 합치지 않고 확인할 점을 알려 드려요", value: "no" }
+        { label: "아니요, 여러 명이에요", sub: "가장 어린 아이 기준으로 계산해요", value: "no" }
       ],
       get: function () { return state.answers.singleChild; },
-      set: function (v) { state.answers.singleChild = v; }
+      set: function (v) {
+        state.answers.singleChild = v;
+        if (v === "no" && state.answers.birthOrder === "first") state.answers.birthOrder = null;
+      }
     }
   };
 
+  /* 자녀가 여러 명이면 가장 어린 아이(막내) 기준으로 묻는다 */
+  function viewOf(key) {
+    const q = QUESTIONS[key];
+    if (state.answers.singleChild !== "no") return q;
+    if (key === "childMonths") {
+      return Object.assign({}, q, {
+        title: "가장 어린 아이는 지금 몇 개월인가요?",
+        help: "아이마다 따로 받기 때문에 가장 어린 아이 한 명 기준으로 계산해요. 태어난 달을 0개월로 셉니다. 0~35개월까지 계산할 수 있어요."
+      });
+    }
+    if (key === "birthOrder") {
+      return Object.assign({}, q, {
+        title: "가장 어린 아이는 몇째인가요?",
+        help: "형제자매를 모두 세어 주세요. 첫만남이용권은 둘째 이상 300만 원이고, 원주시 출생축하금은 둘째·셋째 이상이 다릅니다.",
+        options: q.options.filter(function (o) { return o.value !== "first"; })
+      });
+    }
+    return q;
+  }
+
   function steps() {
-    const list = ["livesInWonju", "childMonths", "returnToWork"];
+    const list = ["livesInWonju", "singleChild", "childMonths", "returnToWork"];
     if (state.answers.returnToWork === "yes" && !state.returned) list.push("returnTiming", "leaveStartAge", "wage", "spouseLeave");
-    list.push("childcare", "gangwon1y", "birthOrder", "singleChild");
+    list.push("childcare", "gangwon1y", "birthOrder");
     return list;
   }
 
@@ -444,7 +467,7 @@
     remember({ view: "step", step: state.step });
     const list = steps();
     const key = list[state.step];
-    const q = QUESTIONS[key];
+    const q = viewOf(key);
 
     $("progress").hidden = false;
     $("progress-text").textContent = "질문 " + (state.step + 1) + " / " + list.length;
@@ -605,6 +628,11 @@
     chevron: ["M8 10l4 4 4-4"]
   };
 
+  /* AI 비서 아이콘: 팀이 정한 헤드셋 이미지 */
+  function aiIcon() {
+    return el("img", { class: "ai-ico", src: "img/ai-headset.png", alt: "", "aria-hidden": "true", width: "18", height: "18" });
+  }
+
   function vTag(prog) {
     if (!prog) return null;
     if (prog.sourceType === "가상") return el("span", { class: "v-mark v-virtual", text: "가상 예시" });
@@ -635,7 +663,7 @@
       : (state.returned ? "이미 복직" : ("생후 " + (state.returnAge == null ? Math.max(a.childMonths, 12) : state.returnAge) + "개월에 복직 예정"));
     return [
       a.livesInWonju === "yes" ? "원주시 거주" : "원주시 외 거주",
-      a.singleChild === "yes" ? "자녀 1명" : "자녀 여러 명",
+      a.singleChild === "yes" ? "자녀 1명" : "자녀 여러 명(가장 어린 아이 기준)",
       "생후 " + a.childMonths + "개월",
       retText,
       a.childcare === "yes" ? "어린이집 이용" : "가정 양육",
@@ -915,6 +943,7 @@
     refreshHero(m);
     $("summary-text").textContent = summaryText();
     $("demo-note").hidden = !state.demo;
+    $("multi-note").hidden = state.answers.singleChild !== "no";
     renderOverview(m, animateNumbers);
     renderSimulation(m);
     renderMonthBreakdown(m);
@@ -1207,21 +1236,38 @@
     }
     const themes = top3Themes(m);
     const max = themes[0].p;
+    const baseRow = m.curve.find(function (p) { return p.age === state.baseAge; });
     themes.forEach(function (t, i) {
       const p = t.p;
-      const isCur = p.age === m.returnAge;
-      box.appendChild(el("li", { class: "top3-item" + (i === 0 ? " is-top" : "") }, [
-        el("span", { class: "top3-rank", text: (i + 1) + "순위 " + t.theme }),
+      /* 강조는 지금 고른 복직 시점과 같은 카드 하나뿐입니다 (1순위 고정 강조 없음) */
+      const isSel = p.age === m.returnAge;
+      let diffText = null;
+      if (baseRow) {
+        const d = p.cash - baseRow.cash;
+        diffText = d === 0 ? "비교 기준과 같음" : (d > 0 ? "+" : "−") + won(Math.abs(d));
+      }
+      box.appendChild(el("li", {}, [el("button", {
+        type: "button",
+        class: "top3-card" + (isSel ? " is-selected" : ""),
+        "aria-pressed": isSel ? "true" : "false",
+        "aria-label": (i + 1) + "순위 " + t.theme + ", 아이 " + p.age + "개월 복직, 현금 약 " + won(p.cash) + (isSel ? ", 선택됨" : ", 이 시점 보기"),
+        onclick: function () { slider.value = String(p.age); renderResults(false); }
+      }, [
+        el("span", { class: "top3-top" }, [
+          el("span", { class: "top3-badge", text: t.theme }),
+          el("span", { class: "top3-state" }, isSel ? [icon(ICONS.check, "ico-sm"), "선택됨"] : ["이 시점 보기"])
+        ]),
         el("strong", { class: "top3-age", text: "아이 " + p.age + "개월 복직" }),
-        el("span", { class: "top3-when", text: approxMonthLabel(dateAtAge(p.age)) + " · " + themeFacts(m, t, max).join(" · ") }),
-        el("span", { class: "top3-cash", text: "현금 약 " + won(p.cash) }),
-        el("button", {
-          type: "button", class: "top3-pick", disabled: isCur ? "disabled" : null,
-          "aria-label": t.theme + ", 아이 " + p.age + "개월 복직으로 옮겨서 보기",
-          text: isCur ? "지금 고른 시점" : "이 시점으로 보기",
-          onclick: function () { slider.value = String(p.age); renderResults(false); goTo("sec-sim", "#sim-total"); }
-        })
-      ]));
+        el("span", { class: "top3-when", text: approxMonthLabel(dateAtAge(p.age)) + " 예정" }),
+        el("span", { class: "top3-when", text: themeFacts(m, t, max).join(" · ") }),
+        el("span", { class: "top3-bottom" }, [
+          el("span", { class: "top3-cap", text: "35개월까지 현금 합계" }),
+          el("span", { class: "top3-row" }, [
+            el("span", { class: "top3-cash", text: "약 " + won(p.cash) }),
+            diffText ? el("span", { class: "top3-diff", text: diffText }) : null
+          ])
+        ])
+      ])]));
     });
     /* 고른 복직 시점 기준 D-Day 준비 일정이 일정에 들어갔음을 알려 줌 (두 기능이 이어지는 지점) */
     const prep = m.evs.filter(function (e) { return e.type === "dday"; });
@@ -1231,40 +1277,6 @@
         el("button", { type: "button", class: "btn-ghost-sm", text: "일정에서 보기", onclick: function () { ui.calView = "grid"; ui.calKey = monthKey(prep[0].date); renderCalendar(ui.lastModel); goTo("sec-events", "#cal-detail"); } })
       ]));
     }
-  }
-
-  /* 예전 '금액 순위' 방식 (참고용으로 남겨 둠, 화면에서는 쓰지 않음) */
-  function renderTop3Legacy(m) {
-    const box = $("top3-list");
-    clear(box);
-    if (!m.simOn || !m.curve) return;
-    if (m.curve.every(function (p) { return p.cash === m.curve[0].cash; })) {
-      box.appendChild(el("li", { class: "top3-flat", text: "복직 시점을 옮겨도 받는 지원금 합계가 같아서 순위를 매기지 않았어요." }));
-      return;
-    }
-    const sorted = m.curve.slice().sort(function (a, b) { return b.cash - a.cash || a.age - b.age; });
-    const seen = {};
-    const top = [];
-    sorted.forEach(function (p) {
-      if (top.length >= 3 || seen[p.cash]) return;
-      seen[p.cash] = true;
-      top.push(p);
-    });
-    top.forEach(function (p, i) {
-      const isCur = p.age === m.returnAge;
-      box.appendChild(el("li", { class: "top3-item" + (i === 0 ? " is-top" : "") }, [
-        el("span", { class: "top3-rank", text: i === 0 ? "가장 많이" : (i + 1) + "순위" }),
-        el("strong", { class: "top3-age", text: "아이 " + p.age + "개월 복직" }),
-        el("span", { class: "top3-when", text: approxMonthLabel(dateAtAge(p.age)) }),
-        el("span", { class: "top3-cash", text: "현금 약 " + won(p.cash) }),
-        el("button", {
-          type: "button", class: "top3-pick", disabled: isCur ? "disabled" : null,
-          "aria-label": "아이 " + p.age + "개월 복직으로 옮겨서 보기",
-          text: isCur ? "지금 고른 시점" : "이 시점으로 보기",
-          onclick: function () { slider.value = String(p.age); renderResults(false); goTo("sec-sim", "#sim-total"); }
-        })
-      ]));
-    });
   }
 
   function renderOverview(m, animateNumbers) {
@@ -1277,7 +1289,7 @@
     if (m.sched.lumpTotal) sub.push("일시금 " + won(m.sched.lumpTotal) + " 별도");
     if (m0.voucher) sub.push("바우처 " + won(m0.voucher) + "은 따로 받아요");
     box.appendChild(el("div", { class: "ov-top" }, [
-      el("p", { class: "ov-label", text: "이번 달 받는 현금" }),
+      el("p", { class: "ov-label", text: "이번 달 받을 수 있는 금액" }),
       big,
       el("p", { class: "ov-sub", text: sub.join(" · ") })
     ]));
@@ -1299,7 +1311,7 @@
         "합계에서 뺀 제도 " + m.excluded.length + "개, 이유 보기"
       ]));
     }
-    if (acts.length) box.appendChild(el("div", { class: "ov-acts" }, [el("span", { class: "ov-acts-lead" }, [icon(ICONS.spark, "ico-sm"), "AI 비서에게 물어보기"])].concat(acts)));
+    if (acts.length) box.appendChild(el("div", { class: "ov-acts" }, [el("span", { class: "ov-acts-lead" }, [aiIcon(), "AI 비서에게 물어보기"])].concat(acts)));
   }
 
   /* ---------- B. 복직 시뮬레이션 ---------- */
@@ -1315,6 +1327,7 @@
     const leaveEnd = start + max;
     let text = "휴직 중 급여는 월 통상임금 " + won(answers.wage) + ", 아이 " + start + "개월에 휴직 시작, 최대 " + max + "개월로 계산했습니다" + (spouse ? " (배우자 휴직 특례 반영)" : "") + ".";
     if (returnAge > leaveEnd) text += " 복직 시점이 휴직 급여 기간(아이 " + leaveEnd + "개월)보다 늦어서, 그 뒤 달은 급여 없이 쉬는 것으로 계산됩니다.";
+    text += " 일반 육아휴직 기준이며, 한부모 근로자는 첫 3개월 월 상한이 300만 원으로 올라가는 특례가 있어요(계산에는 넣지 않았습니다).";
     return text;
   }
 
@@ -1940,9 +1953,9 @@
   function rescueText(m, e) {
     const prog = programOf(e.id), r = resultOf(m, e.id);
     if (!prog || !r) return "";
-    if (prog.replacedBy && /중복/.test(e.reason)) {
+    if (prog.replacedBy && /엇갈려/.test(e.reason)) {
       const o = programOf(prog.replacedBy);
-      return o ? o.name + "을 받지 못하는 상황이 되면 이 제도가 합계에 들어가요." : "";
+      return o ? "담당 기관(원주시 보육아동과)에 " + o.name + "과 함께 받을 수 있는지 확인하세요. 함께 받는다고 확인되면 합계에 더해져요." : "";
     }
     if (prog.amountPolicy === "wage" && !m.answers.wage) return "'답 바꾸기'에서 월 통상임금을 입력하면 합계에 들어가요.";
     if (r.status === "조건 불일치") {
@@ -1957,7 +1970,6 @@
     if (r.status === "보류") return "'답 바꾸기'에서 빠진 답을 채우면 다시 판정해요.";
     if (r.status === "확인 필요") {
       if (prog.lateCheck && m.answers.childMonths >= prog.lateCheck.fromMonths) return "담당 기관에 지금도 신청되는지 확인하세요. 가능하다고 확인되면 받을 수 있어요.";
-      if (m.answers.singleChild === "no") return "자녀 중 누구 기준인지 정해서 다시 입력하면 계산해요.";
       return "공식 사이트나 담당 기관에서 조건을 확인한 뒤 신청하세요. 확인이 끝나면 합계에 넣을 수 있어요.";
     }
     return "";
@@ -2055,7 +2067,7 @@
     conds.appendChild(el("span", { class: "chat-cond", text: a.livesInWonju === "yes" ? "원주시 거주" : "원주시 외 거주" }));
     conds.appendChild(el("span", { class: "chat-cond", text: "생후 " + a.childMonths + "개월" }));
     conds.appendChild(el("span", { class: "chat-cond chat-cond-key", text: a.wage ? "월급 " + won(Number(a.wage)) : "월급 미입력" }));
-    $("chat-live").textContent = "이달 받는 현금 " + won(m.sched.months[0].cash) + " · 아이 35개월까지 현금 약 " + won(m.sched.cashTotal) + (m.simOn ? " · 아이 " + m.returnAge + "개월 복직 기준" : "");
+    $("chat-live").textContent = "이달 받을 수 있는 금액 " + won(m.sched.months[0].cash) + " · 아이 35개월까지 현금 약 " + won(m.sched.cashTotal) + (m.simOn ? " · 아이 " + m.returnAge + "개월 복직 기준" : "");
   }
 
   function refreshChat(m) {
@@ -2139,7 +2151,7 @@
     if (o.page) acts.push(el("button", { type: "button", class: "msg-act", onclick: function () { if (o.beforePage) o.beforePage(); viewInPage(o.page); } }, ["본문에서 보기", icon(ICONS.external, "ico-sm")]));
     (o.extra || []).forEach(function (x) { acts.push(x); });
     $("chat-log").appendChild(el("div", { class: "msg msg-bot" }, [
-      el("p", { class: "msg-kicker" }, [icon(ICONS.spark, "ico-sm"), "AI 비서"]),
+      el("p", { class: "msg-kicker" }, [aiIcon(), "AI 비서"]),
       el("p", { class: "msg-title", text: title }),
       o.render ? box : null,
       o.note ? el("p", { class: "msg-note", text: o.note }) : null,

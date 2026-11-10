@@ -96,7 +96,7 @@
       amountPolicy: "wage",
       amount: null,
       verification: "부분 확인",
-      confirmNote: "하한액은 고용노동부가 매년 고시하는 금액이라 월 70만 원은 최종 확인이 필요합니다. 사후지급금(복직 후 6개월 뒤 25%)은 시행령 개정으로 폐지되어 매월 전액 받는 것으로 계산합니다.",
+      confirmNote: "하한액은 고용노동부가 매년 고시하는 금액이라 월 70만 원은 최종 확인이 필요합니다. 사후지급금(복직 후 6개월 뒤 25%)은 시행령 개정으로 폐지되어 매월 전액 받는 것으로 계산합니다. 한부모 특례(첫 3개월 월 상한 300만 원)는 계산에 넣지 않았습니다.",
       rules: { requiresWonju: false, minMonths: 0, maxMonthsExclusive: 108, requiresReturn: true, requiresChildcare: false },
       timeline: {
         phase: "before_return",
@@ -144,14 +144,15 @@
       payUnit: "월",
       amount: 100000,
       verification: "부분 확인",
-      confirmNote: "월 10만 원 금액은 공식 페이지에서 직접 확인하지 못했습니다. 강원 육아기본수당을 받는 달에는 중복 지원이 안 되어 지원액이 큰 강원 수당만 넣습니다.",
-      replacedBy: "P06",
+      confirmNote: "월 10만 원은 지자체 공식 안내(동대문구·금천구 등)로 확인했습니다. 강원 육아기본수당과는 함께 받는 것으로 계산했습니다(2026-11-10 원주시 담당 부서 전화 확인, 24개월 이상 가정양육 기준). 복지부 안내의 '기타 양육수당' 범위는 서면으로 확인하지 못했습니다.",
       rules: { requiresWonju: false, minMonths: 24, maxMonthsExclusive: 86, requiresReturn: false, requiresChildcare: false, forbidsChildcare: true },
       timeline: { phase: "any", amountByAge: [{ from: 24, to: 86, amount: 100000 }] },
       evidence: [
         { topic: "연령", location: "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003253", text: "24개월부터 (그 전에는 부모급여)" },
+        { topic: "금액", location: "https://www.ddm.go.kr/www/contents.do?key=761", text: "동대문구청 가정양육수당 안내: 24~35개월 10만 원, 36개월 이상 86개월 미만 10만 원 (금천구청 등 다른 지자체 공식 안내도 월 10만 원)" },
         { topic: "보육", location: "https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00003253", text: "어린이집·유치원·종일제 아이돌봄을 이용하지 않는 가정" },
-        { topic: "중복", location: "보건복지부 보육사업안내 · 원주시 영유아 총괄 지원표(팀 조사 증빙)", text: "부모급여, 보육료, 타 지자체 유사 양육수당(육아기본수당 등)과 중복 지원 불가" }
+        { topic: "중복", location: "가정양육수당 공식 안내 페이지(팀 확인, 2026-11-10)", text: "보육료, 부모급여(영아수당), 기타 양육수당, 유아학비와 중복지원 불가. 지자체 육아기본수당이 기타 양육수당에 들어가는지는 명시되어 있지 않음" },
+        { topic: "중복", location: "원주시 담당 부서 전화 문의(2026-11-10, 통화 녹취 전사본 보관)", text: "강원 육아기본수당을 받는 24개월 이상 아동이 어린이집을 이용하지 않으면 가정양육수당도 함께 받을 수 있다고 안내받음. 서면 근거는 아님" }
       ]
     }),
     program({
@@ -225,32 +226,13 @@
       payUnit: "일시",
       amount: 300000,
       confirmNote: "출생일 기준으로 원주에 주민등록을 두고 사는 부 또는 모가 대상이고, 예산 범위에서 지급합니다(조례 '지원할 수 있다'). 신청한 날부터 15일 안에 통장으로 입금됩니다. 둘째는 50만 원, 셋째 이상은 100만 원입니다.",
-      lumpDeadlineText: "조례에는 신청 기한이 없습니다. 출생신고 때 읍·면·동에서 함께 신청하세요. 신청 후 15일 안에 입금됩니다.",
-      lateCheck: { fromMonths: 12, text: "팀 조사 증빙에는 조례 제5조가 출생신고일부터 1년 이내 신청으로 적혀 있으나, 우리가 조례 원문에서 직접 확인한 판은 신청 기한이 없었습니다. 12개월이 지났으면 시청에 신청 가능한지 확인해야 해서 합계에서 뺐습니다." },
+      lumpDeadlineText: "조례에 신청 기간 제한이 없어, 출생 12개월 이후에 신청해도 됩니다(원주시청 담당 부서 전화 확인). 다만 요즘은 출생신고 때 서비스를 한 번에 신청하도록 절차가 바뀌어 대부분 그때 신청합니다. 신청 후 15일 안에 입금됩니다.",
       rules: { requiresWonju: true, minMonths: 0, maxMonthsExclusive: 36, requiresReturn: false, requiresChildcare: false, requiresBirthOrder: true },
       timeline: { phase: "any", amountByOrder: { first: 300000, second: 500000, secondPlus: 500000, thirdPlus: 1000000 } },
       evidence: [
         { topic: "금액", location: "https://www.law.go.kr/LSW//ordinInfoP.do?ordinSeq=1788917&chrClsCd=010202&gubun=ELIS", text: "원주시 출생축하금 및 출생아 건강보험료 지원 등에 관한 조례(시행 2025.12.31, 제2592호) 제4조: 첫째 30만 원, 둘째 50만 원, 셋째 이상 100만 원, 다태아는 출생 순서별" },
-        { topic: "거주", location: "https://www.law.go.kr/LSW//ordinInfoP.do?ordinSeq=1788917&chrClsCd=010202&gubun=ELIS", text: "제3조: 출생아의 출생일을 기준으로 시 관내에 주민등록을 두고 거주하는 부 또는 모. 제5조·제6조: 출생신고 때 안내, 신청 후 15일 안에 통장 입금" }
-      ]
-    }),
-    program({
-      id: "P08",
-      level: "원주시",
-      apply: { channel: "방문 필수", where: "NH농협은행 원주시청출장소 (복지정책과 033-737-2309)", url: null },
-      name: "원주아이 행복청약통장 지원",
-      agency: "원주시",
-      supportKind: "통장 입금",
-      payUnit: "일시",
-      amount: 50000,
-      nowText: "청약통장에 5만 원 입금 (1회)",
-      excludeNote: "원주시가 청약통장에 넣어 주는 5만 원이라 현금 합계에는 넣지 않습니다. 개설할 때 2만 원 이상 첫 납입금이 필요합니다.",
-      confirmNote: "팀 총괄 지원표와 팀원 조사는 10만 원이라 적었지만, 2026 생애주기별 가이드북은 1인 1회 5만 원(2회차 납입금 지원)입니다. 가이드북 기준을 따랐습니다.",
-      rules: { requiresWonju: true, minMonths: 0, maxMonthsExclusive: 36, requiresReturn: false, requiresChildcare: false },
-      timeline: { phase: "any" },
-      evidence: [
-        { topic: "금액", location: "https://www.wonju.go.kr", text: "2026 원주시 생애주기별 가이드북 8쪽: 2023년 1월 1일 이후 원주 출생아, 주택청약종합저축 개설 후 1인 1회 5만 원 지원(2회차 납입금)" },
-        { topic: "거주", location: "https://www.wonju.go.kr", text: "방문 신청(NH농협은행 원주시청출장소), 신분증·주민등록등본·가족관계증명서·기본증명서(상세)·도장·2만 원 이상 첫 납입금 필요" }
+        { topic: "거주", location: "https://www.law.go.kr/LSW//ordinInfoP.do?ordinSeq=1788917&chrClsCd=010202&gubun=ELIS", text: "제3조: 출생아의 출생일을 기준으로 시 관내에 주민등록을 두고 거주하는 부 또는 모. 제5조: 읍·면·동장이 출생신고서 접수 때 신청 절차를 안내하고 신청인은 통합처리신청서를 제출(신청 기한 규정 없음). 제6조: 신청한 날부터 15일 안에 통장 입금" },
+        { topic: "기간", location: "원주시청 담당 부서 전화 확인(2026-11-10, 통화 전사본 보관)", text: "현재 조례상 신청 기간 규정이 없어 출생 후 12개월 시점에 신청해도 무방하다고 안내받음. 출생신고 때 서비스를 한 번에 신청하도록 절차가 바뀌어 대부분 출산 때 신청함" }
       ]
     }),
     program({

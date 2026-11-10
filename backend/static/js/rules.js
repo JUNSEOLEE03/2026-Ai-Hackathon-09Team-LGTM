@@ -124,9 +124,6 @@
     if (program.lateCheck && answers.childMonths != null && answers.childMonths >= program.lateCheck.fromMonths) {
       checks.push(program.lateCheck.text);
     }
-    if (answers.singleChild === "no") {
-      checks.push("자녀가 한 명이 아니라 누구 기준인지 확인이 필요합니다. 자동으로 합치지 않습니다.");
-    }
     if (checks.length) {
       return base(program, "확인 필요", { reasons: checks, evidenceRefs: checkRefs });
     }

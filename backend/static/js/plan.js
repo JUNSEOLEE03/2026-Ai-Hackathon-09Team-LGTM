@@ -169,7 +169,7 @@
       if (program.payUnit !== "일시" && !inPhase(program, age, returnAge)) return;
       const sup = supersededBy(program, programs, rawAnswers, today, age, { raw: rawAnswers, returnAge: returnAge });
       if (sup) {
-        out.excluded.push({ id: program.id, name: program.name, reason: sup.name + "를 받으면 같은 성격의 수당과는 중복 지원이 안 되어, 지원액이 더 큰 " + sup.name + "만 합계에 넣었습니다." });
+        out.excluded.push({ id: program.id, name: program.name, reason: sup.name + "와 함께 받을 수 있는지 자료가 엇갈려, 확실한 " + sup.name + "만 합계에 넣고 이 제도는 뺐습니다." });
         return;
       }
       const amount = amountAtAge(program, age, { raw: rawAnswers, returnAge: returnAge });

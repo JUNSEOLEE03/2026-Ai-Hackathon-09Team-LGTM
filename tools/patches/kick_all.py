@@ -12,6 +12,8 @@ kick_all.py — 원주 육아 혜택 비서: 두 번째 킥 기능 추가
     python3 kick_all.py --check     # 바꾸지 않고 찾기만
     python3 kick_all.py             # 실제 적용 (고칠 곳을 모두 찾은 뒤에만 파일을 바꿈)
 
+협업자 11/10 버전(카드형 Top 3, 헤드셋 아이콘)에도 그대로 적용됩니다. 카드 디자인은 바꾸지 않습니다.
+
 원칙
   - 날짜·금액은 모두 규칙으로 계산합니다. 데이터에 없는 제도(예: 조기복직수당)나 값은 쓰지 않습니다.
   - AI는 계산된 일정만 보고 설명하며, 새 일정·날짜·금액을 만들지 않도록 지시합니다.
@@ -452,6 +454,166 @@ patch(HTML, "Top 3 안내 문구",
 # =====================================================================
 # 실행
 # =====================================================================
+# =====================================================================
+# 협업자 11/10 카드형 Top 3 화면 대응: 카드 디자인은 그대로 두고 내용만 테마별 추천으로
+#   (목록형 화면이면 위 패치, 카드형 화면이면 아래 패치 중 하나가 적용됨)
+# =====================================================================
+for _i, (_p, _d, _o, _n, _r) in enumerate(PATCHES):
+    if _d == "Top 3: 테마별 추천으로 교체":
+        PATCHES[_i] = (_p, _d + " (목록형 화면)", _o, _n, False)
+patch(UI, "Top 3: 테마별 추천으로 교체 (카드형 화면)",
+"""  function renderTop3(m) {
+    const box = $("top3-list");
+    clear(box);
+    if (!m.simOn || !m.curve) return;
+    if (m.curve.every(function (p) { return p.cash === m.curve[0].cash; })) {
+      box.appendChild(el("li", { class: "top3-flat", text: "복직 시점을 옮겨도 받는 지원금 합계가 같아서 순위를 매기지 않았어요." }));
+      return;
+    }
+    const sorted = m.curve.slice().sort(function (a, b) { return b.cash - a.cash || a.age - b.age; });
+    const seen = {};
+    const top = [];
+    sorted.forEach(function (p) {
+      if (top.length >= 3 || seen[p.cash]) return;
+      seen[p.cash] = true;
+      top.push(p);
+    });
+    const baseRow = m.curve.find(function (p) { return p.age === state.baseAge; });
+    const BADGE = ["가장 많이 · 1순위", "2순위 추천", "3순위 추천"];
+    top.forEach(function (p, i) {
+      /* 강조는 지금 고른 복직 시점과 같은 카드 하나뿐입니다 (1순위 고정 강조 없음) */
+      const isSel = p.age === m.returnAge;
+      let diffText = null;
+      if (baseRow) {
+        const d = p.cash - baseRow.cash;
+        diffText = d === 0 ? "비교 기준과 같음" : (d > 0 ? "+" : "−") + won(Math.abs(d));
+      }
+      box.appendChild(el("li", {}, [el("button", {
+        type: "button",
+        class: "top3-card" + (isSel ? " is-selected" : ""),
+        "aria-pressed": isSel ? "true" : "false",
+        "aria-label": "아이 " + p.age + "개월 복직, 현금 약 " + won(p.cash) + (isSel ? ", 선택됨" : ", 이 시점 보기"),
+        onclick: function () { slider.value = String(p.age); renderResults(false); }
+      }, [
+        el("span", { class: "top3-top" }, [
+          el("span", { class: "top3-badge", text: BADGE[i] }),
+          el("span", { class: "top3-state" }, isSel ? [icon(ICONS.check, "ico-sm"), "선택됨"] : ["이 시점 보기"])
+        ]),
+        el("strong", { class: "top3-age", text: "아이 " + p.age + "개월 복직" }),
+        el("span", { class: "top3-when", text: approxMonthLabel(dateAtAge(p.age)) + " 예정" }),
+        el("span", { class: "top3-bottom" }, [
+          el("span", { class: "top3-cap", text: "35개월까지 현금 합계" }),
+          el("span", { class: "top3-row" }, [
+            el("span", { class: "top3-cash", text: "약 " + won(p.cash) }),
+            diffText ? el("span", { class: "top3-diff", text: diffText }) : null
+          ])
+        ])
+      ])]));
+    });
+  }
+""",
+"""  /* 복직 시점 Top 3 테마 (모두 계산값만 사용)
+   *   1 실수령 극대화형: 아이 35개월까지 현금 합계가 가장 큰 시점 (같으면 더 이른 시점)
+   *   2 경력·수익 균형형: 최대 합계의 90% 이상을 받으면서 가장 일찍 복직하는 시점
+   *   3 집중 돌봄형: 아이 24개월(만 2세)까지 집에서 돌보는 시점 (이미 지났거나 겹치면 가장 늦은 시점) */
+  function top3Themes(m) {
+    const pts = m.curve;
+    const max = pts.reduce(function (b, p) { return p.cash > b.cash ? p : b; }, pts[0]);
+    const used = {};
+    used[max.age] = true;
+    let bal = null;
+    pts.forEach(function (p) { if (!bal && !used[p.age] && p.cash >= max.cash * 0.9) bal = p; });
+    if (!bal) pts.forEach(function (p) { if (!bal && !used[p.age]) bal = p; });
+    if (bal) used[bal.age] = true;
+    const target = m.age < 24 ? 24 : 35;
+    let care = pts.find(function (p) { return p.age === target && !used[p.age]; }) || null;
+    for (let i = pts.length - 1; !care && i >= 0; i -= 1) { if (!used[pts[i].age]) care = pts[i]; }
+    return [
+      { theme: "실수령 극대화형", p: max },
+      bal ? { theme: "경력·수익 균형형", p: bal } : null,
+      care ? { theme: "집중 돌봄형", p: care } : null
+    ].filter(Boolean);
+  }
+
+  /* 테마 카드에 붙일 근거 (계산값): 금액 차이, 복직 시기 차이, 휴직 급여 개월, 특례, 집에서 돌보는 기간, 3월 신학기 */
+  function themeFacts(m, t, max) {
+    const pts = m.curve;
+    const facts = [];
+    if (t.p.age === max.age) {
+      const gain = max.cash - pts[0].cash;
+      facts.push(gain > 0 ? "바로 복직보다 현금 +" + won(gain) : "가장 많이 받는 시점");
+    } else {
+      facts.push(t.p.cash === max.cash ? "최대와 같은 금액" : "최대보다 현금 " + won(max.cash - t.p.cash) + " 적게");
+      const gap = max.age - t.p.age;
+      facts.push(gap > 0 ? gap + "개월 일찍 복직" : (-gap) + "개월 더 돌봄");
+    }
+    const s = Plan.monthlySchedule(CATALOG, m.answers, { today: TODAY, horizon: m.horizon, returnAge: t.p.age });
+    const ls = leaveStats(s);
+    if (ls && ls.count) facts.push("휴직 급여 " + ls.count + "개월");
+    const lp = leaveProgram();
+    const start = m.answers.leaveStartAge == null ? 0 : m.answers.leaveStartAge;
+    if (lp && lp.timeline.leavePay.special && m.answers.wage && m.answers.spouseLeave === "yes" && start < lp.timeline.leavePay.special.withinChildMonths) facts.push("부모 함께 휴직 특례 반영");
+    facts.push("집에서 " + (t.p.age - m.age) + "개월 돌봄");
+    const mo = Number(dateAtAge(t.p.age).slice(5, 7));
+    if (mo === 2 || mo === 3) facts.push("3월 신학기 어린이집 입소 시기");
+    return facts;
+  }
+
+  function renderTop3(m) {
+    const box = $("top3-list");
+    clear(box);
+    if (!m.simOn || !m.curve) return;
+    if (m.curve.every(function (p) { return p.cash === m.curve[0].cash; })) {
+      box.appendChild(el("li", { class: "top3-flat", text: "복직 시점을 옮겨도 받는 지원금 합계가 같아서 순위를 매기지 않았어요." }));
+      return;
+    }
+    const themes = top3Themes(m);
+    const max = themes[0].p;
+    const baseRow = m.curve.find(function (p) { return p.age === state.baseAge; });
+    themes.forEach(function (t, i) {
+      const p = t.p;
+      /* 강조는 지금 고른 복직 시점과 같은 카드 하나뿐입니다 (1순위 고정 강조 없음) */
+      const isSel = p.age === m.returnAge;
+      let diffText = null;
+      if (baseRow) {
+        const d = p.cash - baseRow.cash;
+        diffText = d === 0 ? "비교 기준과 같음" : (d > 0 ? "+" : "−") + won(Math.abs(d));
+      }
+      box.appendChild(el("li", {}, [el("button", {
+        type: "button",
+        class: "top3-card" + (isSel ? " is-selected" : ""),
+        "aria-pressed": isSel ? "true" : "false",
+        "aria-label": (i + 1) + "순위 " + t.theme + ", 아이 " + p.age + "개월 복직, 현금 약 " + won(p.cash) + (isSel ? ", 선택됨" : ", 이 시점 보기"),
+        onclick: function () { slider.value = String(p.age); renderResults(false); }
+      }, [
+        el("span", { class: "top3-top" }, [
+          el("span", { class: "top3-badge", text: t.theme }),
+          el("span", { class: "top3-state" }, isSel ? [icon(ICONS.check, "ico-sm"), "선택됨"] : ["이 시점 보기"])
+        ]),
+        el("strong", { class: "top3-age", text: "아이 " + p.age + "개월 복직" }),
+        el("span", { class: "top3-when", text: approxMonthLabel(dateAtAge(p.age)) + " 예정" }),
+        el("span", { class: "top3-when", text: themeFacts(m, t, max).join(" · ") }),
+        el("span", { class: "top3-bottom" }, [
+          el("span", { class: "top3-cap", text: "35개월까지 현금 합계" }),
+          el("span", { class: "top3-row" }, [
+            el("span", { class: "top3-cash", text: "약 " + won(p.cash) }),
+            diffText ? el("span", { class: "top3-diff", text: diffText }) : null
+          ])
+        ])
+      ])]));
+    });
+    /* 고른 복직 시점 기준 D-Day 준비 일정이 일정에 들어갔음을 알려 줌 (두 기능이 이어지는 지점) */
+    const prep = m.evs.filter(function (e) { return e.type === "dday"; });
+    if (prep.length) {
+      box.appendChild(el("li", { class: "top3-flat" }, [
+        "아이 " + m.returnAge + "개월 복직 기준 준비 일정 " + prep.length + "건(어린이집 대기·보육료 전환 등)을 일정에 넣었어요. ",
+        el("button", { type: "button", class: "btn-ghost-sm", text: "일정에서 보기", onclick: function () { ui.calView = "grid"; ui.calKey = monthKey(prep[0].date); renderCalendar(ui.lastModel); goTo("sec-events", "#cal-detail"); } })
+      ]));
+    }
+  }
+""", required=False)
+
+
 def main():
     texts, crlf = {}, {}
     missing_files = set()
@@ -492,6 +654,10 @@ def main():
             (problems if required else skipped).append(f"{path}: 원래 문장을 못 찾음 — {desc}")
         else:
             problems.append(f"{path}: 같은 문장이 {count}곳 있어 어디를 고칠지 모름 — {desc}")
+
+    _ui = texts.get(UI)
+    if _ui is not None and "function top3Themes" not in _ui:
+        problems.append(UI + ": Top 3 화면(renderTop3)이 목록형·카드형 어느 쪽과도 달라 테마 추천을 넣지 못함")
 
     print("고칠 곳")
     for u in upgraded:
