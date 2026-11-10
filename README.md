@@ -21,7 +21,7 @@
 
 · 이준서 (AI 엔지니어 / Document AI & Prompt)
 	· PyMuPDF · pdfplumber 기반 비정형 PDF 텍스트 및 표(Table) 구조 전처리 파이프라인 개발
-	· Amazon Bedrock(Claude 3.5 Sonnet) 연동 및 행정 용어 순화 프롬프트 엔지니어링
+	· Amazon Bedrock(Claude Haiku 4.5) 연동 및 행정 용어 순화 프롬프트 엔지니어링
 	· 5대 핵심 항목 정형 JSON 스키마 추출 로직 검증 및 최적화
 
 · 노광민 (백엔드 & 인프라 엔지니어 / Backend & DevOps)
