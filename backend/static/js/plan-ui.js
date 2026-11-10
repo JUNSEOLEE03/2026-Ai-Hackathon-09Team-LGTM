@@ -2474,7 +2474,7 @@
       aiList("확인이 필요한 혜택", data.check, function (x) { return x.title + (x.reason ? " · " + x.reason : ""); })
     ].forEach(function (n) { if (n) box.appendChild(n); });
 
-    if (data.total_monthly || data.total_once) {
+    if (data.source !== "screen" && (data.total_monthly || data.total_once)) {
       box.appendChild(el("p", { class: "msg-sum" }, [
         "AI 기준 합계 ",
         el("strong", { text: "매월 " + won(Number(data.total_monthly) || 0) }),
@@ -2489,7 +2489,7 @@
         el("strong", { text: "이번 달 현금 " + won(cash0) }),
         m.sched.lumpTotal ? " · 일시금 " + won(m.sched.lumpTotal) : null
       ]));
-      if ((Number(data.total_monthly) || 0) !== cash0) {
+      if (data.source !== "screen" && (Number(data.total_monthly) || 0) !== cash0) {
         box.appendChild(el("p", { class: "muted", text: "두 금액이 달라요. 서버 AI는 별도 혜택 목록으로 계산하고, 화면은 복직 시점·어린이집·출생 순서까지 반영해 계산해요. 금액은 화면 계산을 기준으로 보세요." }));
       }
     }
@@ -2506,6 +2506,23 @@
     box.appendChild(el("p", { class: "muted", text: data.disclaimer || "정확한 지급 여부는 담당 부서에서 확인해 주세요." }));
   }
 
+  /* 화면이 규칙 엔진으로 계산한 금액과 혜택 목록 (서버 AI는 이 숫자로만 답함 → 화면과 AI 금액 일치) */
+  function screenFacts() {
+    const m = ui.lastModel;
+    if (!m || !m.sched || !m.sched.months.length) return null;
+    const m0 = m.sched.months[0];
+    return {
+      child_months: m.age,
+      return_age: m.simOn ? m.returnAge : null,
+      this_month_cash: m0.cash,
+      this_month_voucher: m0.voucher || 0,
+      lump_total: m.sched.lumpTotal || 0,
+      cash_total_35: m.sched.cashTotal,
+      matched: payRows(m0, m.sched.lumps).map(function (r) { return { title: r.name, amount_text: r.label + " " + won(r.amount) }; }),
+      check: (m.excluded || []).map(function (e) { return { title: e.name, reason: e.reason }; })
+    };
+  }
+
   function askServerAi(text) {
     let holder = null;
     addBot("서버 AI에게 물어보고 있어요…", {
@@ -2514,7 +2531,7 @@
         clear(box);
         box.appendChild(el("p", { class: "muted", text: "AI가 답을 정리하고 있어요. 잠시만 기다려 주세요." }));
       },
-      note: "규칙으로 바로 답하지 못한 질문이라 서버 AI(Bedrock)에게 보냈어요. 우리 집 조건 요약과 질문만 보내고, 서버에 저장하지 않아요."
+      note: "규칙으로 바로 답하지 못한 질문이라 서버 AI(Bedrock)에게 보냈어요. 우리 집 조건 요약, 화면에서 계산한 금액과 질문만 보내고, 서버에 저장하지 않아요."
     });
     if (!holder) return;
     const titleEl = holder.parentNode ? holder.parentNode.querySelector(".msg-title") : null;
@@ -2523,7 +2540,7 @@
     fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "우리 가족 상황: " + summaryText() + "\n질문: " + text }),
+      body: JSON.stringify({ message: "우리 가족 상황: " + summaryText() + "\n질문: " + text, screen: screenFacts() }),
       signal: ctrl ? ctrl.signal : undefined
     }).then(function (res) {
       return res.json();

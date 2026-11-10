@@ -103,6 +103,7 @@ class MatchRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    screen: Optional[Dict[str, Any]] = None   # 화면(규칙 엔진)이 계산한 금액·혜택 목록
 
 class ApplyPrefillRequest(BaseModel):
     doc_id: str = "benefit_01"
@@ -278,6 +279,71 @@ async def match_benefits(req: MatchRequest):
     return evaluate_welfare_match(model_to_dict(req), load_welfare_catalog())
 
 
+def _int0(v) -> int:
+    try:
+        return max(0, min(int(float(v)), 10 ** 10))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _won(n: int) -> str:
+    # 화면과 같은 표기: 3105000 → 310.5만 원, 1000000 → 100만 원
+    if n >= 10000:
+        v = round(n / 10000, 1)
+        return (f"{v:,.0f}" if v == int(v) else f"{v:,.1f}") + "만 원"
+    return f"{n:,}원"
+
+
+def chat_with_screen_numbers(message: str, screen: dict) -> dict:
+    """[/api/chat + screen] 화면(규칙 엔진)이 계산한 금액·혜택 목록만으로 답변.
+    서버에서 금액을 다시 계산하지 않으므로 화면과 AI 답의 금액이 항상 같음."""
+    def pick(key, field):
+        out = []
+        for it in (screen.get(key) or [])[:20]:
+            if isinstance(it, dict):
+                out.append({"title": str(it.get("title", ""))[:80], field: str(it.get(field, ""))[:240]})
+        return out
+
+    matched = pick("matched", "amount_text")
+    check = pick("check", "reason")
+    ra = screen.get("return_age")
+    facts = {
+        "아이_개월": _int0(screen.get("child_months")),
+        "복직_시점_아이_개월": _int0(ra) if ra is not None else "복직 계획 없음 또는 이미 복직",
+        "이번_달_현금": _int0(screen.get("this_month_cash")),
+        "이번_달_바우처": _int0(screen.get("this_month_voucher")),
+        "일시금_합계": _int0(screen.get("lump_total")),
+        "아이_35개월까지_현금_합계": _int0(screen.get("cash_total_35")),
+        "이번_달_받는_혜택": matched,
+        "합계에서_뺀_제도와_이유": check,
+    }
+    system = (
+        "당신은 원주시 육아 혜택 안내 상담원입니다. 아래 [화면 계산 결과]는 공식 자료로 만든 규칙 엔진이 계산한 값입니다. "
+        "이 결과에 있는 제도 이름과 금액만 그대로 사용해 사용자의 질문에 3~5문장의 쉬운 존댓말로 답하세요. "
+        "금액을 새로 계산하거나 더하거나 바꾸지 말고, 결과에 없는 제도·금액·날짜는 절대 만들지 마세요. "
+        "결과로 답할 수 없는 질문이면 그렇다고 말하고 담당 기관 확인을 권하세요."
+    )
+    user = f"[사용자 질문]\n{message}\n\n[화면 계산 결과]\n{json.dumps(facts, ensure_ascii=False)}"
+    try:
+        reply = call_llm(system, user, 0.1, 700)
+    except Exception:
+        logger.exception("chat(screen) llm failed")
+        reply = (f"화면 계산으로는 이번 달 현금 {_won(facts['이번_달_현금'])}"
+                 + (f", 일시금 {_won(facts['일시금_합계'])}" if facts["일시금_합계"] else "")
+                 + "을 받을 수 있어요. 자세한 내용은 화면의 한눈에 보기와 월별 지급 내역을 확인해 주세요.")
+    return {
+        "status": "success",
+        "source": "screen",
+        "reply": reply,
+        "matched": matched,
+        "check": check,
+        "total_monthly": facts["이번_달_현금"],
+        "total_once": facts["일시금_합계"],
+        "extracted_profile": None,
+        "disclaimer": "금액은 화면의 규칙 엔진이 계산한 예상치예요. 정확한 지급 여부는 담당 부서에서 확인해 주세요.",
+    }
+
+
 @app.post("/api/chat")
 async def chat_benefits(req: ChatRequest):
     """[신규 2] 자연어 질문 -> 프로필 추출 -> match 호출 -> 쉬운 한국어 답변"""
@@ -285,6 +351,8 @@ async def chat_benefits(req: ChatRequest):
         return make_error_response("SERVER_ERROR", "질문 내용을 입력해 주세요.")
     try:
         async with AI_SLOTS:
+            if req.screen:
+                return await run_in_threadpool(chat_with_screen_numbers, req.message[:2000], req.screen)
             return await run_in_threadpool(chat_with_welfare_bot, req.message[:2000], load_welfare_catalog())
     except Exception:
         logger.exception("chat failed")
