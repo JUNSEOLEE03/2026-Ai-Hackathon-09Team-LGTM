@@ -1181,7 +1181,7 @@
       const gain = max.cash - pts[0].cash;
       facts.push(gain > 0 ? "바로 복직보다 현금 +" + won(gain) : "가장 많이 받는 시점");
     } else {
-      facts.push("최대보다 현금 " + won(max.cash - t.p.cash) + " 적게");
+      facts.push(t.p.cash === max.cash ? "최대와 같은 금액" : "최대보다 현금 " + won(max.cash - t.p.cash) + " 적게");
       const gap = max.age - t.p.age;
       facts.push(gap > 0 ? gap + "개월 일찍 복직" : (-gap) + "개월 더 돌봄");
     }

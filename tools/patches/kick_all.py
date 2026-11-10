@@ -31,8 +31,19 @@ def patch(path, desc, old, new, required=True):
     PATCHES.append((path, desc, old, new, required))
 
 
+# 이전 kick_all.py(885b4…)를 이미 적용한 서버: 바뀐 한 줄만 고쳐서 새 버전과 같게 만듦
+UP.append(("static/js/plan-ui.js", "Top 3 근거: 최대와 같은 금액이면 '0원 적게' 대신 '최대와 같은 금액'",
+           '''      facts.push("최대보다 현금 " + won(max.cash - t.p.cash) + " 적게");''', '''      facts.push(t.p.cash === max.cash ? "최대와 같은 금액" : "최대보다 현금 " + won(max.cash - t.p.cash) + " 적게");'''))
+
+
 def upgrade_old_versions(texts):
-    return []
+    done = []
+    for path, desc, old, new in UP:
+        t = texts.get(path)
+        if t is not None and old in t and new not in t:
+            texts[path] = t.replace(old, new)
+            done.append(path + "  " + desc)
+    return done
 
 
 UI = "static/js/plan-ui.js"
@@ -359,7 +370,7 @@ patch(UI, "Top 3: 테마별 추천으로 교체",
       const gain = max.cash - pts[0].cash;
       facts.push(gain > 0 ? "바로 복직보다 현금 +" + won(gain) : "가장 많이 받는 시점");
     } else {
-      facts.push("최대보다 현금 " + won(max.cash - t.p.cash) + " 적게");
+      facts.push(t.p.cash === max.cash ? "최대와 같은 금액" : "최대보다 현금 " + won(max.cash - t.p.cash) + " 적게");
       const gap = max.age - t.p.age;
       facts.push(gap > 0 ? gap + "개월 일찍 복직" : (-gap) + "개월 더 돌봄");
     }
