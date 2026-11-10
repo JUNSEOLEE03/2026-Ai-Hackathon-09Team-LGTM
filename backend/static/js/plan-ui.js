@@ -1724,7 +1724,7 @@
     if (e.type === "dday") {
       return el("div", { class: "msg-acts" }, [
         e.url ? el("a", { class: "btn-ghost-sm", href: e.url, target: "_blank", rel: "noopener noreferrer", "aria-label": e.title + " 공식 사이트 (새 창)" }, ["공식 사이트", icon(ICONS.external, "ico-sm")]) : null,
-        el("button", { type: "button", class: "btn-ghost-sm", onclick: function (ev) { openChat(ev.currentTarget); explainPrepWithAi(); } }, [icon(ICONS.spark, "ico-sm"), "AI 비서에게 설명 듣기"])
+        el("button", { type: "button", class: "btn-ghost-sm", onclick: function (ev) { openChat(ev.currentTarget); explainPrepWithAi(); } }, [aiIcon(), "AI 비서에게 설명 듣기"])
       ]);
     }
     if ((e.type === "deadline" || e.type === "prep") && m.eligible.indexOf(e.programId) >= 0) {
@@ -2659,7 +2659,7 @@
           render: renderPrepCard,
           live: true,
           page: m.simOn ? "sec-events" : null,
-          extra: m.simOn ? [el("button", { type: "button", class: "msg-act", onclick: function () { explainPrepWithAi(); } }, [icon(ICONS.spark, "ico-sm"), "AI 설명 듣기"])] : []
+          extra: m.simOn ? [el("button", { type: "button", class: "msg-act", onclick: function () { explainPrepWithAi(); } }, [aiIcon(), "AI 설명 듣기"])] : []
         });
         break;
       case "calendar":
